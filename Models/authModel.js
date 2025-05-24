@@ -3,11 +3,12 @@
 const mongoose = require("mongoose")
 
 const authSchema = new mongoose.Schema({
-    email: {type: String},
-    password: {type: String},
-    firstName: {type: String},
-    lastName: {type: String},
-    state: {type: String}
+    email: {type: String, require: true},
+    password: {type: String, require: true},
+    firstName: {type: String, default: ""},
+    lastName: {type: String, default: ""},
+    state: {type: String, default: ""},
+    role: {type: String, default: "user"}
 
 }, {timestamps: true})
 

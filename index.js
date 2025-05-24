@@ -9,10 +9,13 @@ const jwt = require("jsonwebtoken")
 const dotenv = require("dotenv")
 dotenv.config()
 
+
 const bcrypt = require("bcryptjs")
 const Auth = require("./Models/authModel")
-// const validateSignUp = require("./middleWares/validate")
-// const validateLogin = require("./middleWares/validate")
+const handleAllUsers = require("./Controller")
+const handleUserRegistration = require("./Controller")
+
+const { validateRegistration } = require("./middleware")
 
 
 const app = express()
@@ -38,54 +41,7 @@ app.get("/", (req, res)=>{
 
 // registration
 
-app.post("/sign-up", async (req, res)=>{
-
-    try {
-
-         const { email, password, firstName, lastName, state } = req.body
-
-          if(!email){
-       return res.status(400).json({message:"Please provide your email"})
-        }
-
-        if(!password){
-          return res.status(400).json({message:"Please provide your password "})
-        }
-
-           if(password.length < 8 ){
-             return res.status(400).json({message:"require mininmum of 8 characters "}) 
-        }
-
-
-
-        const existingUser = await Auth.findOne({ email })
-
-        if(existingUser){
-            return res.status(400).json({message: "User account already exist"})
-        }
-
-
-        const hashedPassword = await bcrypt.hash(password, 12)
-
-        const newUser = new Auth({email,
-            password: hashedPassword,
-            firstName,
-            lastName,
-            state})
-
-        // await newUser.save()
-        
-        return res.status(200).json({message: "User account created successfully",
-            newUser: {email, firstName, lastName, state}
-        })
-        
-    } catch (error) {
-         return res.status(500).json({message: error.message})
-    }
-
-
-})
-
+app.post("/sign-up", validateRegistration, handleUserRegistration)
 
 // login
 
@@ -146,3 +102,71 @@ app.post("/login", async (req, res)=>{
     }
 })
 
+
+// forget password
+
+app.post("/forget-password", async (req, res)=>{
+
+  try {
+    
+      const { email } = req.body
+
+    if(!email){
+        return res.status(400).json({message: "Please enter your email"})
+    }
+
+    const user = await Auth.findOne({ email })
+
+    if(!user){
+        return res.status(404).json({message: "User account not found"})
+    }
+
+    const accessToken = await jwt.sign({user}, process.env.ACCESS_TOKEN, {expiresIn: "5m"})
+
+    // send the user an email with token
+
+await sendForgetPasswordEmail( email, accessToken)
+    // 
+
+    return res.status(200).json({message: "Please check your email inbox"})
+
+  } catch (error) {
+    return res.status(500).json({message: error.message})
+  }
+})
+
+// reset password
+
+app.patch("/reset-password", async (req, res)=>{
+    
+    try {
+        
+        const { password } = req.body
+
+        const user = await findOne({ email: req.user.email })
+
+        if(!user){
+            return res.status(404).json({messasge: "User account not found"})
+
+        const hashedPassword = await bcrypt.hash(password, 12)
+        }
+
+        user.password = hashedPassword
+
+        await user.save()
+
+        return res.status(200).json({message: "Password reset successfully"})
+
+
+
+    } catch (error) {
+        return res.status(500).json({message: error.message})
+    }
+})
+
+// MC Route 
+// model, controller, Route 
+// Middleware  / Authorization / validation  / deploy
+
+
+app.get("/all-users", handleAllUsers)
