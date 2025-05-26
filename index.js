@@ -6,21 +6,20 @@ const mongoose = require("mongoose")
 
 const jwt = require("jsonwebtoken")
 
-const dotenv = require("dotenv")
-dotenv.config()
-
+const dotenv = require("dotenv").config()
+                                                                               
 
 const bcrypt = require("bcryptjs")
 const Auth = require("./Models/authModel")
-const handleAllUsers = require("./Controller")
-const handleUserRegistration = require("./Controller")
-
-const { validateRegistration } = require("./middleware")
+const cors = require("cors")
+const routes = require("./Route")
 
 
 const app = express()
 
 app.use(express.json())
+
+app.use(cors());
 
 const PORT = process.env.PORT || 6000
 
@@ -35,138 +34,4 @@ app.listen(PORT, ()=>{
 })
 
 
-app.get("/", (req, res)=>{
-    console.log("Welcome to my world of Tech")
-} )
-
-// registration
-
-app.post("/sign-up", validateRegistration, handleUserRegistration)
-
-// login
-
-app.post("/login", async (req, res)=>{
-    
-    try {
-        
-        const { email, password} = req.body
-
-         if(!email){
-             return res.status(400).json({message:"Please provide your email"})
-         }
-
-          if(!password){
-                 return res.status(400).json({message:"Please provide your password "})
-            }
-
-        const user = await Auth.findOne({ email })
-
-          if(!user){
-              return res.status(400).json({message:"User account not found"})
-        }
-
-        const isMatch = await bcrypt.compare(password, user?.password)
-
-        if(!isMatch){
-                return res.status(400).json({message: "Incorrect email or password"})
-        }
-
-        // Generate token
-
-        const accessToken = jwt.sign({id: user?._id}, process.env.ACCESS_TOKEN, {expireIn: "5m"} )
-
-
-        // REfresh Token
-        const refreshToken = jwt.sign({id: user?._id}, process.env.REFRESH_TOKEN, {expiresIn: "30d"})
-
-
-
-        return res.status(200).json({message: "Login succesfully",
-            accessToken,
-            user: {
-                email: user?.email,
-                email: user?.email,
-                firstName: user?.firstName,
-                lastName: user?.lastName,
-                state: user?.state
-            },
-            refreshToken
-
-        })
-
-        
-    } catch (error) {
-        
-         return res.status(500).json({message: error.message})
-
-    }
-})
-
-
-// forget password
-
-app.post("/forget-password", async (req, res)=>{
-
-  try {
-    
-      const { email } = req.body
-
-    if(!email){
-        return res.status(400).json({message: "Please enter your email"})
-    }
-
-    const user = await Auth.findOne({ email })
-
-    if(!user){
-        return res.status(404).json({message: "User account not found"})
-    }
-
-    const accessToken = await jwt.sign({user}, process.env.ACCESS_TOKEN, {expiresIn: "5m"})
-
-    // send the user an email with token
-
-await sendForgetPasswordEmail( email, accessToken)
-    // 
-
-    return res.status(200).json({message: "Please check your email inbox"})
-
-  } catch (error) {
-    return res.status(500).json({message: error.message})
-  }
-})
-
-// reset password
-
-app.patch("/reset-password", async (req, res)=>{
-    
-    try {
-        
-        const { password } = req.body
-
-        const user = await findOne({ email: req.user.email })
-
-        if(!user){
-            return res.status(404).json({messasge: "User account not found"})
-
-        const hashedPassword = await bcrypt.hash(password, 12)
-        }
-
-        user.password = hashedPassword
-
-        await user.save()
-
-        return res.status(200).json({message: "Password reset successfully"})
-
-
-
-    } catch (error) {
-        return res.status(500).json({message: error.message})
-    }
-})
-
-// MC Route 
-// model, controller, Route 
-// Middleware  / Authorization / validation  / deploy
-
-
-app.get("/all-users", handleAllUsers)
+app.use(routes)

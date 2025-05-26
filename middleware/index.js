@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken")
 const Auth = require("../Models/authModel")
 
+const { application } = require("express")
 
 const validateRegistration = async (req, res, next)=>{
 
